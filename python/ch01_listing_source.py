@@ -157,15 +157,30 @@ redis 127.0.0.1:6379> zrange zset-key 0 -1 withscores
 ONE_WEEK_IN_SECONDS = 7 * 86400                     #A
 VOTE_SCORE = 432                                    #A
 
-def article_vote(conn, user, article):
+def article_vote(conn, user, article, against=False):
     cutoff = time.time() - ONE_WEEK_IN_SECONDS      #B
     if conn.zscore('time:', article) < cutoff:      #C
         return
 
     article_id = article.partition(':')[-1]         #D
-    if conn.sadd('voted:' + article_id, user):      #E
-        conn.zincrby('score:', article, VOTE_SCORE) #E
-        conn.hincrby(article, 'votes', 1)           #E
+    if against:
+        if conn.sismember('up-voted:' + article_id, user):
+            conn.smove('up-voted:' + article_id, 'down-voted:' + article_id, user) 
+            conn.zincrby('score:', article, -2 * VOTE_SCORE)
+            conn.hincrby(article, 'down-votes', 1)
+            conn.hincrby(article, 'up-votes', -1)
+        elif conn.sadd('down-voted:' + article_id, user):
+            conn.zincrby('score:', article, -VOTE_SCORE)
+            conn.hincrby(article, 'down-votes', 1)
+    else:
+        if conn.sismember('down-voted:' + article_id, user):
+            conn.smove('down-voted:' + article_id, 'up-voted:' + article_id, user)
+            conn.zincrby('score:', article, 2 * VOTE_SCORE)
+            conn.hincrby(article, 'up-votes', 1)
+            conn.hincrby(article, 'down-votes', -1)
+        if conn.sadd('up-voted:' + article_id, user):      #E
+            conn.zincrby('score:', article, VOTE_SCORE) #E
+            conn.hincrby(article, 'up-votes', 1)           #E
 # <end id="upvote-code"/>
 #A Prepare our constants
 #B Calculate the cutoff time for voting
@@ -189,7 +204,8 @@ def post_article(conn, user, title, link):
         'link': link,                           #C
         'poster': user,                         #C
         'time': now,                            #C
-        'votes': 1,                             #C
+        'up-votes': 1,                          #C
+        'down-votes': 0,
     })                                          #C
 
     conn.zadd('score:', article, now + VOTE_SCORE)  #D
@@ -284,10 +300,25 @@ class TestCh01(unittest.TestCase):
 
         article_vote(conn, 'other_user', 'article:' + article_id)
         print "We voted for the article, it now has votes:",
-        v = int(conn.hget('article:' + article_id, 'votes'))
+        print
+        v = int(conn.hget('article:' + article_id, 'up-votes'))
+        dv = int(conn.hget('article:' + article_id, 'down-votes'))
         print v
+        print dv
         print
         self.assertTrue(v > 1)
+        self.assertTrue(dv == 0)
+
+        print "We decided to down-vote for this article:",
+        article_vote(conn, 'other_user', 'article:' + article_id, against=True)
+        print
+        v = int(conn.hget('article:' + article_id, 'up-votes'))
+        dv = int(conn.hget('article:' + article_id, 'down-votes'))
+        print v
+        print dv
+        print
+        self.assertTrue(v == 1)
+        self.assertTrue(dv > 0)
 
         print "The currently highest-scoring articles are:"
         articles = get_articles(conn, 1)
