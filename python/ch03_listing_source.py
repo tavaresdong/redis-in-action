@@ -143,11 +143,12 @@ True                                        #F
 #END
 '''
 
+# This is the answer of exercise on page .4
 # <start id="exercise-update-token"/>
 def update_token(conn, token, user, item=None):
     timestamp = time.time()
     conn.hset('login:', token, user)
-    conn.zadd('recent:', token, timestamp)
+    conn.zadd('recent:', token, timestamp) 
     if item:
         key = 'viewed:' + token
         conn.lrem(key, item)                    #A
