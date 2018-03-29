@@ -23,14 +23,21 @@ Clone the code base and install pre-requisite gems
 
 ```
 git clone git@github.com:josiahcarlson/redis-in-action.git
-cd redis-in-action
+cd redis-in-action/ruby
 bundle install
 ```
 
 ---
 
-To run test suite:
+To run a specific test suite:
 
 ```
 bundle exec rspec spec/chapter01_spec.rb
+```
+
+Alternatively, you can launch `guard`, it will "auto-runs" your tests when files
+are modified.
+
+```
+bundle exec guard
 ```

@@ -356,7 +356,7 @@ def index_ad(conn, id, locations, content, type, value):
         pipeline.sadd('idx:req:'+location, id)              #B
 
     words = tokenize(content)
-    for word in tokenize(content):                          #H
+    for word in words:                                      #H
         pipeline.zadd('idx:' + word, id, 0)                 #H
 
     rvalue = TO_ECPM[type](                                 #C
@@ -642,7 +642,7 @@ def search_job_levels(conn, skill_levels):
 
 
 def index_job_years(conn, job_id, skill_years):
-    total_skills = len(set(skill for skill, level in skill_years))
+    total_skills = len(set(skill for skill, years in skill_years))
     pipeline = conn.pipeline(True)
     for skill, years in skill_years:
         pipeline.zadd(
@@ -734,9 +734,6 @@ class TestCh07(unittest.TestCase):
         r = parse_and_search(self.conn, 'content indexed -random')
         self.assertEquals(self.conn.smembers('idx:' + r), set())
 
-        r = parse_and_search(self.conn, 'content indexed +random')
-        self.assertEquals(self.conn.smembers('idx:' + r), set(['test']))
-
         print "Which passed!"
 
     def test_search_with_sort(self):
@@ -785,8 +782,8 @@ class TestCh07(unittest.TestCase):
         self.assertEquals(pairs, pairs2)
 
         zadd_string(self.conn, 'key', 'test', 'value', test2='other')
-        self.assertTrue(self.conn.zscore('key', 'test'), string_to_score('value'))
-        self.assertTrue(self.conn.zscore('key', 'test2'), string_to_score('other'))
+        self.assertEquals(self.conn.zscore('key', 'test'), string_to_score('value'))
+        self.assertEquals(self.conn.zscore('key', 'test2'), string_to_score('other'))
 
     def test_index_and_target_ads(self):
         index_ad(self.conn, '1', ['USA', 'CA'], self.content, 'cpc', .25)
