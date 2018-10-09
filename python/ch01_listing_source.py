@@ -13,7 +13,7 @@ redis 127.0.0.1:6379> del hello             #H
 (integer) 1                                 #I
 redis 127.0.0.1:6379> get hello             #J
 (nil)
-redis 127.0.0.1:6379> 
+redis 127.0.0.1:6379>
 # <end id="simple-string-calls"/>
 #A Start the redis-cli client up
 #D Set the key 'hello' to the value 'world'
@@ -46,7 +46,7 @@ redis 127.0.0.1:6379> lpop list-key         #D
 redis 127.0.0.1:6379> lrange list-key 0 -1  #D
 1) "item2"                                  #D
 2) "item"                                   #D
-redis 127.0.0.1:6379> 
+redis 127.0.0.1:6379>
 # <end id="simple-list-calls"/>
 #A When we push items onto a LIST, the command returns the current length of the list
 #B We can fetch the entire list by passing a range of 0 for the start index, and -1 for the last index
@@ -81,7 +81,7 @@ redis 127.0.0.1:6379> srem set-key item2    #D
 redis 127.0.0.1:6379>  smembers set-key
 1) "item"
 2) "item3"
-redis 127.0.0.1:6379> 
+redis 127.0.0.1:6379>
 # <end id="simple-set-calls"/>
 #A When adding an item to a SET, Redis will return a 1 if the item is new to the set and 0 if it was already in the SET
 #B We can fetch all of the items in the SET, which returns them as a sequence of items, which is turned into a Python set from Python
@@ -159,13 +159,15 @@ VOTE_SCORE = 432                                    #A
 
 def article_vote(conn, user, article, against=False):
     cutoff = time.time() - ONE_WEEK_IN_SECONDS      #B
+
+    # If the article is posted more than a week ago, don't vote
     if conn.zscore('time:', article) < cutoff:      #C
         return
 
     article_id = article.partition(':')[-1]         #D
     if against:
         if conn.sismember('up-voted:' + article_id, user):
-            conn.smove('up-voted:' + article_id, 'down-voted:' + article_id, user) 
+            conn.smove('up-voted:' + article_id, 'down-voted:' + article_id, user)
             conn.zincrby('score:', article, -2 * VOTE_SCORE)
             conn.hincrby(article, 'down-votes', 1)
             conn.hincrby(article, 'up-votes', -1)
@@ -276,7 +278,7 @@ def get_group_articles(conn, group, page, order='score:'):
 class TestCh01(unittest.TestCase):
     def setUp(self):
         import redis
-        self.conn = redis.Redis(db=15)
+        self.conn = redis.Redis(db=2)
 
     def tearDown(self):
         del self.conn
@@ -335,8 +337,8 @@ class TestCh01(unittest.TestCase):
         self.assertTrue(len(articles) >= 1)
 
         to_del = (
-            conn.keys('time:*') + conn.keys('voted:*') + conn.keys('score:*') + 
-            conn.keys('article:*') + conn.keys('group:*')
+            conn.keys('time:*') + conn.keys('up-voted:*') + conn.keys('score:*') +
+            conn.keys('article:*') + conn.keys('group:*') + conn.keys('down-voted:*')
         )
         if to_del:
             conn.delete(*to_del)
