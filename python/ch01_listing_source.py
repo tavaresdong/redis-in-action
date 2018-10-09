@@ -322,6 +322,18 @@ class TestCh01(unittest.TestCase):
         self.assertTrue(v == 1)
         self.assertTrue(dv > 0)
 
+        print "We decide to upvote for this article by another one"
+        article_vote(conn, 'third_user', 'article:' + article_id)
+        v = int(conn.hget('article:' + article_id, 'up-votes'))
+        dv = int(conn.hget('article:' + article_id, 'down-votes'))
+        print v
+        print dv
+        print
+        self.assertTrue(v == 2)
+        self.assertTrue(dv > 0)
+
+        post_article(conn, 'user2', 'B title', 'http://amazon.com')
+
         print "The currently highest-scoring articles are:"
         articles = get_articles(conn, 1)
         pprint.pprint(articles)
